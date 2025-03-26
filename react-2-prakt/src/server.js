@@ -13,8 +13,8 @@ app.use(bodyParser.json());
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-
 const favoritesFilePath = path.join(__dirname, '..', 'favorites.json');
+const usersFilePath = path.join(__dirname, '..', 'users.json');
 
 
 function loadFavorites() {
@@ -30,6 +30,7 @@ function loadFavorites() {
     return [];
   }
 }
+
 function saveFavorites(favorites) {
   try {
     fs.writeFileSync(favoritesFilePath, JSON.stringify(favorites, null, 2));
@@ -39,6 +40,27 @@ function saveFavorites(favorites) {
 }
 
 
+function loadUsers() {
+  try {
+    if (fs.existsSync(usersFilePath)) {
+      const data = fs.readFileSync(usersFilePath, 'utf8');
+      return JSON.parse(data);
+    } else {
+      return [];
+    }
+  } catch (error) {
+    console.error('Error loading users:', error);
+    return [];
+  }
+}
+
+function saveUsers(users) {
+  try {
+    fs.writeFileSync(usersFilePath, JSON.stringify(users, null, 2));
+  } catch (error) {
+    console.error('Error saving users:', error);
+  }
+}
 
 app.get('/api/favorites', (req, res) => {
   const favorites = loadFavorites();
@@ -51,7 +73,6 @@ app.post('/api/favorites', (req, res) => {
     return res.status(400).json({ error: 'Neteisingi recepto duomenys' });
   }
   let favorites = loadFavorites();
-  
   if (favorites.some(fav => fav.id === newFavorite.id)) {
     return res.status(400).json({ error: 'Receptas jau yra mėgstamiausių sąraše' });
   }
@@ -72,25 +93,25 @@ app.delete('/api/favorites/:id', (req, res) => {
 });
 
 
-let users = [];
-
-
 app.post('/api/register', (req, res) => {
   const { name, email, password } = req.body;
   if (!name || !email || !password) {
     return res.status(400).json({ error: 'Trūksta registracijos duomenų' });
   }
+  let users = loadUsers();
   if (users.some(u => u.email === email)) {
     return res.status(400).json({ error: 'Vartotojas su tokiu el. paštu jau egzistuoja' });
   }
   const newUser = { id: Date.now(), name, email, password };
   users.push(newUser);
+  saveUsers(users);
   res.status(201).json({ user: newUser });
 });
 
 
 app.post('/api/login', (req, res) => {
   const { email, password } = req.body;
+  let users = loadUsers();
   const user = users.find(u => u.email === email && u.password === password);
   if (!user) {
     return res.status(400).json({ error: 'Neteisingi prisijungimo duomenys' });
